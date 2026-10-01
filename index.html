@@ -425,7 +425,8 @@
   // 쿠폰 + (미사용이면) 직원 확인 → 매장 선택 → 사용완료
   function renderCoupon(area, c, opts) {
     opts = opts || {};
-    var html = (opts.notice ? '<p class="notice">' + esc(opts.notice) + '</p>' : '') + couponHTML(c);
+    var html = (opts.notice ? '<p class="notice">' + esc(opts.notice) + '</p>' : '') + couponHTML(c) +
+      (opts.info ? '<p class="notice">' + esc(opts.info) + '</p>' : '');
     if (c.used) {
       html += usedBoxHTML(c, !!opts.justUsed);
     } else {
@@ -519,7 +520,8 @@
     call("issueCoupon", phone).then(function (c) {
       $("issueForm").classList.add("hidden");
       renderCoupon($("issueArea"), c, {
-        notice: c.existing ? "이 번호로 이미 발급된 쿠폰이 있어요. 쿠폰은 한 번호당 1장만 발급돼요." : ""
+        notice: c.existing ? "이 번호로 이미 발급된 쿠폰이 있어요. 쿠폰은 한 번호당 1장만 발급돼요." : "",
+        info: "해당화면을 나가도 추후 쿠폰조회로 발급된 쿠폰확인이 가능합니다."
       });
       $("issueArea").scrollIntoView({ block: "start", behavior: "smooth" });
     }).catch(function (e) {
