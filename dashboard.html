@@ -139,14 +139,6 @@
   .hidden { display: none !important; }
   .err { color: #d03b3b; font-weight: 600; }
 
-  /* 로그인 */
-  .gate { min-height: 100vh; display: grid; place-items: center; padding: 16px; }
-  .gate form { width: 100%; max-width: 340px; background: var(--surface); border: 1px solid var(--ring); border-radius: 14px; padding: 26px 24px; }
-  .gate h1 { font-size: 19px; margin: 0 0 4px; }
-  .gate p { margin: 0 0 18px; color: var(--ink-2); }
-  .gate input { width: 100%; padding: 11px 12px; border: 1px solid var(--axis); border-radius: 8px; background: var(--page); font-size: 16px; letter-spacing: .1em; }
-  .gate input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
-  .gate .btn { width: 100%; margin-top: 12px; padding: 10px; }
 
   @media (max-width: 1100px) {
     .g-kpi { grid-template-columns: repeat(2, 1fr); }
@@ -167,18 +159,8 @@
 </head>
 <body>
 
-<!-- 비밀번호 -->
-<div class="gate" id="gate">
-  <form id="gateForm" novalidate>
-    <h1>퐁당 쿠폰 대시보드</h1>
-    <p>관리자 비밀번호를 입력해 주세요.</p>
-    <input type="password" id="gateKey" inputmode="numeric" autocomplete="current-password" aria-label="비밀번호">
-    <p class="err hidden" id="gateErr" role="alert" style="margin:10px 0 0"></p>
-    <button class="btn primary" id="gateBtn" type="submit">확인</button>
-  </form>
-</div>
 
-<div class="app hidden" id="app">
+<div class="app" id="app">
   <aside class="side">
     <div class="brand"><b>퐁당 쿠폰 현황</b><span>한글날 맞춤법 퀴즈 이벤트</span></div>
     <div class="navlabel">메뉴</div>
@@ -272,8 +254,7 @@
 
   var $ = function (id) { return document.getElementById(id); };
   var STORE_VARS = ["--s1", "--s2", "--s3", "--s4"];
-  var KEY_STORE = "pongdang-dash-key";
-  var key = "", data = null, view = "overview", timer = null;
+  var data = null, view = "overview", timer = null;
 
   function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
   function n(v) { return Number(v || 0).toLocaleString("ko-KR"); }
@@ -288,7 +269,7 @@
   function fetchStats() {
     return fetch(API_URL, {
       method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" },
-      body: JSON.stringify({ action: "stats", key: key }), credentials: "omit"
+      body: JSON.stringify({ action: "stats" }), credentials: "omit"
     }).then(function (r) { return r.json(); }, function () { throw new Error("연결이 원활하지 않아요."); })
       .then(function (res) { if (!res || !res.ok) throw new Error((res && res.error) || "불러오지 못했어요."); return res.data; });
   }
@@ -303,7 +284,6 @@
     }).catch(function (e) {
       $("liveDot").classList.add("off");
       $("updated").textContent = e.message;
-      if (/비밀번호/.test(e.message)) logout(e.message);
     });
   }
 
@@ -515,46 +495,20 @@
     });
   }
 
-  // ---- 로그인 ----
+  // ---- 시작 ----
   function start() {
-    $("gate").classList.add("hidden");
-    $("app").classList.remove("hidden");
     var v = ls(function () { return localStorage.getItem("pongdang-dash-view"); });
     setView(v === "stores" ? "stores" : "overview");
     load(true);
-    clearInterval(timer);
     timer = setInterval(function () { if (!document.hidden) load(false); }, REFRESH_MS);
   }
-  function logout(msg) {
-    clearInterval(timer);
-    ls(function () { localStorage.removeItem(KEY_STORE); });
-    $("app").classList.add("hidden");
-    $("gate").classList.remove("hidden");
-    if (msg) { $("gateErr").textContent = msg; $("gateErr").classList.remove("hidden"); }
-  }
-
-  $("gateForm").addEventListener("submit", function (ev) {
-    ev.preventDefault();
-    var k = $("gateKey").value.trim(), btn = $("gateBtn");
-    if (!k) return;
-    btn.disabled = true; btn.textContent = "확인 중…"; $("gateErr").classList.add("hidden");
-    key = k;
-    fetchStats().then(function (d) {
-      ls(function () { localStorage.setItem(KEY_STORE, k); });
-      data = d; start();
-      $("updated").textContent = "갱신 " + d.updatedAt;
-    }).catch(function (e) {
-      $("gateErr").textContent = e.message; $("gateErr").classList.remove("hidden");
-    }).then(function () { btn.disabled = false; btn.textContent = "확인"; });
-  });
 
   document.querySelectorAll(".nav").forEach(function (b) { b.addEventListener("click", function () { setView(b.getAttribute("data-view")); }); });
   document.querySelectorAll("[data-refresh]").forEach(function (b) { b.addEventListener("click", function () { load(true); }); });
   $("refreshBtn").addEventListener("click", function () { load(true); });
   var rz; window.addEventListener("resize", function () { clearTimeout(rz); rz = setTimeout(function () { if (data) render(); }, 150); });
 
-  var saved = ls(function () { return localStorage.getItem(KEY_STORE); });
-  if (saved) { key = saved; start(); } else { $("gateKey").focus(); }
+  start();
 </script>
 </body>
 </html>
