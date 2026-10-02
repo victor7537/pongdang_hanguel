@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>가맹점 쿠폰 대시보드 · 퐁당</title>
+<style>
+  :root {
+    color-scheme: light;
+    --page: #f9f9f7;
+    --surface: #fcfcfb;
+    --side: #f1f0ec;
+    --ink: #0b0b0b;
+    --ink-2: #52514e;
+    --muted: #898781;
+    --grid: #e1e0d9;
+    --axis: #c3c2b7;
+    --ring: rgba(11,11,11,.10);
+    --hover: rgba(11,11,11,.05);
+    --accent: #c4281c;           /* 퐁당 브랜드 (메뉴 표시용, 데이터에는 쓰지 않음) */
+    --used: #4a3aa7;             /* 사용완료 */
+    --used-track: #dcd8f3;
+    --issued: #898781;           /* 발급 */
+    --s1: #2a78d6;               /* 매장 1 */
+    --s2: #eb6834;               /* 매장 2 */
+    --s3: #1baf7a;
+    --s4: #eda100;
+    --sans: system-ui, -apple-system, "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:where(:not([data-theme="light"])) {
+      color-scheme: dark;
+      --page: #0d0d0d; --surface: #1a1a19; --side: #141413; --ink: #ffffff; --ink-2: #c3c2b7; --muted: #898781;
+      --grid: #2c2c2a; --axis: #383835; --ring: rgba(255,255,255,.10); --hover: rgba(255,255,255,.06);
+      --accent: #ea5a4c; --used: #9085e9; --used-track: #2f2b4d; --issued: #898781;
+      --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --page: #0d0d0d; --surface: #1a1a19; --side: #141413; --ink: #ffffff; --ink-2: #c3c2b7; --muted: #898781;
+    --grid: #2c2c2a; --axis: #383835; --ring: rgba(255,255,255,.10); --hover: rgba(255,255,255,.06);
+    --accent: #ea5a4c; --used: #9085e9; --used-track: #2f2b4d; --issued: #898781;
+    --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500;
+  }
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body { background: var(--page); color: var(--ink); font-family: var(--sans); font-size: 14px; line-height: 1.5; -webkit-font-smoothing: antialiased; }
+  button, input { font: inherit; color: inherit; }
+
+  /* 레이아웃 */
+  .app { display: grid; grid-template-columns: 232px 1fr; min-height: 100vh; }
+  .side { background: var(--side); border-right: 1px solid var(--ring); padding: 22px 14px; display: flex; flex-direction: column; gap: 4px; position: sticky; top: 0; height: 100vh; }
+  .brand { padding: 0 10px 18px; }
+  .brand b { display: block; font-size: 18px; letter-spacing: -.01em; }
+  .brand span { color: var(--ink-2); font-size: 12.5px; }
+  .navlabel { padding: 10px 10px 6px; font-size: 11.5px; font-weight: 600; color: var(--muted); letter-spacing: .04em; }
+  .nav { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; border: 0; background: transparent; padding: 10px 12px; border-radius: 8px; cursor: pointer; font-weight: 500; color: var(--ink-2); }
+  .nav:hover { background: var(--hover); color: var(--ink); }
+  .nav[aria-current="page"] { background: var(--surface); color: var(--ink); font-weight: 600; box-shadow: 0 0 0 1px var(--ring); }
+  .nav[aria-current="page"]::before { content: ""; width: 3px; height: 16px; border-radius: 2px; background: var(--accent); margin-left: -4px; }
+  .nav:focus-visible, .btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .sidefoot { margin-top: auto; padding: 12px 10px 0; border-top: 1px solid var(--ring); font-size: 12px; color: var(--ink-2); }
+  .sidefoot .btn { margin-top: 10px; width: 100%; }
+  .live { display: inline-flex; align-items: center; gap: 6px; }
+  .live::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: #0ca30c; }
+  .live.off::before { background: var(--muted); }
+
+  main { padding: 26px 28px 48px; min-width: 0; }
+  .head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; margin-bottom: 18px; flex-wrap: wrap; }
+  .head h1 { margin: 0; font-size: 22px; letter-spacing: -.01em; }
+  .head p { margin: 2px 0 0; color: var(--ink-2); }
+  .btn { border: 1px solid var(--ring); background: var(--surface); border-radius: 8px; padding: 7px 12px; cursor: pointer; font-weight: 500; }
+  .btn:hover { background: var(--hover); }
+  .btn.primary { background: var(--ink); color: var(--page); border-color: var(--ink); }
+
+  .grid { display: grid; gap: 14px; }
+  .g-kpi { grid-template-columns: 1.4fr repeat(4, 1fr); }
+  .g-2 { grid-template-columns: 1fr 1fr; }
+  .card { background: var(--surface); border: 1px solid var(--ring); border-radius: 12px; padding: 16px 18px; min-width: 0; }
+  .card h2 { margin: 0; font-size: 14.5px; font-weight: 600; }
+  .card .sub { margin: 2px 0 12px; color: var(--ink-2); font-size: 12.5px; }
+  .mt { margin-top: 14px; }
+
+  /* 지표 */
+  .stat .label { color: var(--ink-2); font-size: 12.5px; font-weight: 500; }
+  .stat .value { font-size: 28px; font-weight: 600; letter-spacing: -.02em; line-height: 1.25; margin-top: 4px; }
+  .stat .value small { font-size: 14px; font-weight: 500; color: var(--ink-2); margin-left: 2px; }
+  .stat .note { color: var(--muted); font-size: 12px; margin-top: 2px; }
+  .hero .value { font-size: 48px; line-height: 1.1; }
+  .meter { height: 10px; border-radius: 5px; background: var(--used-track); overflow: hidden; margin-top: 14px; }
+  .meter i { display: block; height: 100%; background: var(--used); border-radius: 5px 0 0 5px; }
+  .meter.thin { height: 6px; margin-top: 10px; }
+  .key { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 8px; color: var(--ink-2); font-size: 12.5px; }
+  .key span { display: inline-flex; align-items: center; gap: 6px; }
+  .sw { width: 10px; height: 10px; border-radius: 3px; flex: none; display: inline-block; }
+  .sw.line { height: 2px; width: 14px; border-radius: 1px; }
+
+  /* 차트 */
+  .chart { position: relative; }
+  .chart svg { display: block; width: 100%; overflow: visible; }
+  .chart text { font-family: var(--sans); font-size: 11px; fill: var(--muted); }
+  .chart text.lab { fill: var(--ink); font-weight: 600; font-size: 12px; }
+  .empty { color: var(--muted); text-align: center; padding: 40px 0; font-size: 13px; }
+  .tip { position: absolute; pointer-events: none; background: var(--surface); border: 1px solid var(--ring); box-shadow: 0 4px 16px rgba(0,0,0,.12); border-radius: 8px; padding: 8px 10px; font-size: 12px; white-space: nowrap; z-index: 5; display: none; }
+  .tip b { display: block; margin-bottom: 3px; }
+  .tip div { display: flex; align-items: center; gap: 6px; color: var(--ink-2); }
+  .tip div strong { color: var(--ink); margin-left: auto; padding-left: 12px; font-variant-numeric: tabular-nums; }
+
+  /* 막대 비교 */
+  .hb { display: grid; grid-template-columns: minmax(90px, auto) 1fr 64px; align-items: center; gap: 6px 12px; }
+  .hb .nm { display: flex; align-items: center; gap: 8px; color: var(--ink); font-weight: 500; white-space: nowrap; }
+  .hb .tr { height: 16px; position: relative; }
+  .hb .tr i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 0 4px 4px 0; min-width: 2px; }
+  .hb .vl { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
+  .hb .vl small { display: block; color: var(--muted); font-weight: 400; font-size: 11.5px; }
+
+  /* 표 */
+  .tbl { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .tbl th { text-align: left; font-weight: 500; color: var(--ink-2); font-size: 12px; padding: 8px 10px; border-bottom: 1px solid var(--grid); white-space: nowrap; }
+  .tbl td { padding: 9px 10px; border-bottom: 1px solid var(--grid); white-space: nowrap; }
+  .tbl .num { text-align: right; font-variant-numeric: tabular-nums; }
+  .tbl tr.total td { font-weight: 600; border-bottom: 0; }
+  .tbl tr.muted td { color: var(--ink-2); }
+  .tblwrap { overflow-x: auto; margin: 0 -4px; }
+
+  /* 매장 카드 */
+  .g-store { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+  .store h2 { display: flex; align-items: center; gap: 8px; }
+  .store .value { font-size: 36px; font-weight: 600; letter-spacing: -.02em; margin-top: 8px; line-height: 1.15; }
+  .store .value small { font-size: 14px; color: var(--ink-2); font-weight: 500; margin-left: 2px; }
+  .store dl { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 12px; margin: 14px 0 0; padding-top: 12px; border-top: 1px solid var(--grid); }
+  .store dt { color: var(--ink-2); font-size: 12px; }
+  .store dd { margin: 0; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .store dd.sm { font-weight: 500; font-size: 12.5px; }
+  .store.pending { background: transparent; border-style: dashed; }
+
+  .hidden { display: none !important; }
+  .err { color: #d03b3b; font-weight: 600; }
+
+
+  @media (max-width: 1100px) {
+    .g-kpi { grid-template-columns: repeat(2, 1fr); }
+    .g-kpi .hero { grid-column: 1 / -1; }
+  }
+  @media (max-width: 820px) {
+    .app { grid-template-columns: 1fr; }
+    .side { position: sticky; top: 0; z-index: 10; height: auto; flex-direction: row; align-items: center; flex-wrap: wrap; padding: 10px 16px; gap: 6px; border-right: 0; border-bottom: 1px solid var(--ring); }
+    .brand { padding: 0; margin-right: auto; }
+    .brand span, .navlabel { display: none; }
+    .nav { width: auto; padding: 7px 10px; font-size: 13px; }
+    .sidefoot { display: none; }
+    main { padding: 18px 16px 40px; }
+    .g-2 { grid-template-columns: 1fr; }
+    .hero .value { font-size: 40px; }
+  }
+
+  /* 가맹점용 추가 */
+  .g-kpi5 { grid-template-columns: 1.4fr repeat(4, 1fr); }
+  .toolbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 14px; }
+  .toolbar label { color: var(--ink-2); font-size: 12.5px; font-weight: 500; }
+  select { font: inherit; color: var(--ink); background: var(--surface); border: 1px solid var(--axis); border-radius: 8px; padding: 7px 30px 7px 10px; min-width: 220px; }
+  select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .rank { display: grid; grid-template-columns: 22px minmax(104px, 150px) 1fr 104px; align-items: center; gap: 7px 10px; }
+  .rank .no { color: var(--muted); font-variant-numeric: tabular-nums; text-align: right; font-size: 12px; }
+  .rank .nm { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 500; }
+  .rank .tr { height: 14px; display: flex; gap: 2px; }
+  .rank .tr i { display: block; height: 100%; }
+  .rank .tr i.u { background: var(--used); border-radius: 0; }
+  .rank .tr i.n { background: var(--used-track); border-radius: 0 4px 4px 0; }
+  .rank .tr i.u:last-child { border-radius: 0 4px 4px 0; }
+  .rank .vl { text-align: right; font-variant-numeric: tabular-nums; font-size: 12.5px; color: var(--ink-2); white-space: nowrap; }
+  .rank .vl b { color: var(--ink); }
+  .rank > div { cursor: default; }
+  .tbl th.sort { cursor: pointer; user-select: none; }
+  .tbl th.sort:hover { color: var(--ink); }
+  .tbl th .ar { display: inline-block; width: 10px; color: var(--ink); }
+  .tbl td a { color: inherit; text-decoration: none; border-bottom: 1px dotted var(--axis); cursor: pointer; }
+  .mini { display: inline-block; width: 54px; height: 6px; border-radius: 3px; background: var(--used-track); vertical-align: middle; margin-right: 8px; overflow: hidden; }
+  .mini i { display: block; height: 100%; background: var(--used); }
+  .zero td { color: var(--muted); }
+  @media (max-width: 1100px) { .g-kpi5 { grid-template-columns: repeat(2, 1fr); } .g-kpi5 .hero { grid-column: 1 / -1; } }
+  @media (max-width: 820px) { .rank { grid-template-columns: 18px 96px 1fr 76px; } select { min-width: 0; width: 100%; } .toolbar { display: block; } }
+</style>
+</head>
+<body>
+<div class="app" id="app">
+  <aside class="side">
+    <div class="brand"><b>퐁당 가맹점 쿠폰</b><span>한글날 맞춤법 퀴즈 이벤트</span></div>
+    <div class="navlabel">메뉴</div>
+    <button class="nav" type="button" data-view="overview" aria-current="page">통합 대시보드</button>
+    <button class="nav" type="button" data-view="stores">매장별 사용현황</button>
+    <div class="sidefoot">
+      <div class="live" id="liveDot">1분마다 자동 갱신</div>
+      <div id="updated" style="margin-top:4px">불러오는 중…</div>
+      <button class="btn" type="button" id="refreshBtn">지금 새로고침</button>
+    </div>
+  </aside>
+
+  <main>
+    <!-- 통합 대시보드 -->
+    <section id="view-overview">
+      <div class="head">
+        <div><h1>통합 대시보드</h1><p>가맹점 전체의 쿠폰 발급·사용 현황</p></div>
+        <button class="btn" type="button" data-refresh>새로고침</button>
+      </div>
+
+      <div class="grid g-kpi5">
+        <div class="card stat hero">
+          <div class="label">총 발급 쿠폰</div>
+          <div class="value" id="kTotal">–</div>
+          <div class="meter" aria-hidden="true"><i id="kMeter" style="width:0"></i></div>
+          <div class="key"><span><i class="sw" style="background:var(--used)"></i>사용완료 <b id="kUsedPct">–</b></span><span><i class="sw" style="background:var(--used-track)"></i>미사용 <b id="kUnusedPct">–</b></span></div>
+        </div>
+        <div class="card stat"><div class="label">사용완료</div><div class="value" id="kUsed">–</div><div class="note">직원 확인 완료</div></div>
+        <div class="card stat"><div class="label">미사용</div><div class="value" id="kUnused">–</div><div class="note">발급 후 아직 사용 전</div></div>
+        <div class="card stat"><div class="label">사용률</div><div class="value" id="kRate">–</div><div class="note">사용완료 ÷ 총 발급</div></div>
+        <div class="card stat"><div class="label">오늘 사용</div><div class="value" id="kToday">–</div><div class="note" id="kTodayNote">오늘 발급 –</div></div>
+      </div>
+
+      <div class="card mt">
+        <h2>일별 발급 · 사용 추이</h2>
+        <p class="sub">가맹점 전체, 날짜별 건수</p>
+        <div class="key" style="margin:-4px 0 8px"><span><i class="sw line" style="background:var(--issued)"></i>발급</span><span><i class="sw line" style="background:var(--used)"></i>사용완료</span></div>
+        <div class="chart" id="cDaily"></div>
+      </div>
+
+      <div class="grid mt">
+        <div class="card">
+          <h2>매장별 발급 순위</h2>
+          <p class="sub">발급 많은 순 · 막대 = 사용완료 + 미사용</p>
+          <div class="key" style="margin:-4px 0 12px"><span><i class="sw" style="background:var(--used)"></i>사용완료</span><span><i class="sw" style="background:var(--used-track)"></i>미사용</span></div>
+          <div class="chart" id="cRank"></div>
+        </div>
+      </div>
+
+      <div class="grid mt">
+        <div class="card">
+          <h2>시간대별 사용</h2>
+          <p class="sub">직원 확인 시각 기준, 전체 기간 합계</p>
+          <div class="chart" id="cHourly"></div>
+        </div>
+      </div>
+
+      <div class="card mt">
+        <h2>최근 사용 내역</h2>
+        <p class="sub">가장 최근 30건 · 휴대폰 번호는 가려서 표시</p>
+        <div class="tblwrap" id="tRecent"></div>
+      </div>
+    </section>
+
+    <!-- 매장별 사용현황 -->
+    <section id="view-stores" class="hidden">
+      <div class="head">
+        <div><h1>매장별 사용현황</h1><p>매장별 발급 · 사용완료 · 미사용 집계</p></div>
+        <button class="btn" type="button" data-refresh>새로고침</button>
+      </div>
+
+      <div class="toolbar">
+        <label for="storeSel">매장 선택</label>
+        <select id="storeSel"><option value="">전체 매장 비교</option></select>
+      </div>
+
+      <!-- 전체 비교 -->
+      <div id="cmpView">
+        <div class="card">
+          <h2>매장별 집계표</h2>
+          <p class="sub">열 제목을 누르면 정렬 · 매장명을 누르면 상세 보기</p>
+          <div class="tblwrap" id="tStores"></div>
+        </div>
+      </div>
+
+      <!-- 단일 매장 -->
+      <div id="oneView" class="hidden">
+        <div class="grid g-kpi5">
+          <div class="card stat hero">
+            <div class="label" id="sName">–</div>
+            <div class="value" id="sIssued">–</div>
+            <div class="meter" aria-hidden="true"><i id="sMeter" style="width:0"></i></div>
+            <div class="key"><span><i class="sw" style="background:var(--used)"></i>사용완료 <b id="sUsedPct">–</b></span><span><i class="sw" style="background:var(--used-track)"></i>미사용 <b id="sUnusedPct">–</b></span></div>
+          </div>
+          <div class="card stat"><div class="label">사용완료</div><div class="value" id="sUsed">–</div><div class="note" id="sRank">–</div></div>
+          <div class="card stat"><div class="label">미사용</div><div class="value" id="sUnused">–</div><div class="note">발급 후 아직 사용 전</div></div>
+          <div class="card stat"><div class="label">사용률</div><div class="value" id="sRate">–</div><div class="note" id="sRateCmp">–</div></div>
+          <div class="card stat"><div class="label">오늘 사용</div><div class="value" id="sToday">–</div><div class="note" id="sTodayNote">–</div></div>
+        </div>
+        <div class="card mt">
+          <h2>일별 발급 · 사용 추이</h2>
+          <p class="sub" id="sDailySub">날짜별 건수</p>
+          <div class="key" style="margin:-4px 0 8px"><span><i class="sw line" style="background:var(--issued)"></i>발급</span><span><i class="sw line" style="background:var(--used)"></i>사용완료</span></div>
+          <div class="chart" id="cStoreDaily"></div>
+        </div>
+        <div class="card mt">
+          <h2>최근 사용 내역</h2>
+          <p class="sub">이 매장의 최근 사용 (전체 최근 30건 중)</p>
+          <div class="tblwrap" id="tStoreRecent"></div>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script>
+  // ▼ 수정 영역 ▼
+  var API_URL = "https://script.google.com/macros/s/AKfycbxkT700tLiWe47XVS9Z5Nbs3Jz7TWTMjdPbsvJ1ZI49S4fN_7Uh_GVSe-cmJHhyF8Hp/exec"; // 가맹점용 Apps Script 웹 앱 주소
+  var REFRESH_MS = 60000;
+  // ▲ 여기까지 ▲
+
+  var $ = function (id) { return document.getElementById(id); };
+  var data = null, view = "overview", timer = null, sel = "", sortKey = "issued", sortDir = -1;
+
+  function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
+  function n(v) { return Number(v || 0).toLocaleString("ko-KR"); }
+  function pct(a, b) { return b ? (a / b * 100) : 0; }
+  function pctStr(a, b) { return b ? pct(a, b).toFixed(1) + "%" : "–"; }
+  function css(v) { return getComputedStyle(document.documentElement).getPropertyValue(v).trim(); }
+  function shortDate(k) { var p = k.split("-"); return Number(p[1]) + "." + Number(p[2]); }
+  function ls(fn) { try { return fn(); } catch (e) { return null; } }
+
+  // ---- 서버 ----
+  function fetchStats() {
+    return fetch(API_URL, {
+      method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify({ action: "stats" }), credentials: "omit"
+    }).then(function (r) { return r.json(); }, function () { throw new Error("연결이 원활하지 않아요."); })
+      .then(function (res) { if (!res || !res.ok) throw new Error((res && res.error) || "불러오지 못했어요."); return res.data; });
+  }
+
+  function load(manual) {
+    if (manual) $("updated").textContent = "불러오는 중…";
+    return fetchStats().then(function (d) {
+      data = d;
+      $("updated").textContent = "갱신 " + d.updatedAt;
+      $("liveDot").classList.remove("off");
+      fillSelect();
+      render();
+    }).catch(function (e) {
+      $("liveDot").classList.add("off");
+      $("updated").textContent = e.message;
+    });
+  }
+
+  // ---- 화면 전환 ----
+  function setView(v) {
+    view = v;
+    document.querySelectorAll(".nav").forEach(function (b) {
+      if (b.getAttribute("data-view") === v) b.setAttribute("aria-current", "page"); else b.removeAttribute("aria-current");
+    });
+    $("view-overview").classList.toggle("hidden", v !== "overview");
+    $("view-stores").classList.toggle("hidden", v !== "stores");
+    ls(function () { localStorage.setItem("pongdang-fdash-view", v); });
+    if (data) render();
+    window.scrollTo(0, 0);
+  }
+  function render() { if (view === "overview") renderOverview(); else renderStores(); }
+
+  function fillSelect() {
+    var s = $("storeSel"), cur = s.value;
+    if (s.options.length - 1 === data.stores.length) return;
+    s.innerHTML = '<option value="">전체 매장 비교</option>' + data.stores.map(function (nm) {
+      return '<option value="' + esc(nm) + '">' + esc(nm) + '</option>';
+    }).join("");
+    s.value = cur;
+  }
+  function openStore(nm) { sel = nm; $("storeSel").value = nm; if (view !== "stores") setView("stores"); else render(); window.scrollTo(0, 0); }
+
+  function recentTable(rows, withStore) {
+    if (!rows.length) return '<div class="empty">아직 사용 내역이 없어요</div>';
+    return '<table class="tbl"><thead><tr><th>사용 일시</th>' + (withStore ? '<th>매장</th>' : '') + '<th>휴대폰 번호</th><th class="num">일련번호</th></tr></thead><tbody>' +
+      rows.map(function (r) {
+        return '<tr><td>' + esc(r.usedAt) + '</td>' + (withStore ? '<td><a data-store="' + esc(r.store) + '">' + esc(r.store) + '</a></td>' : '') +
+          '<td>' + esc(r.phone) + '</td><td class="num">' + esc(r.serial) + '</td></tr>';
+      }).join("") + '</tbody></table>';
+  }
+  function bindStoreLinks(root) {
+    root.querySelectorAll("a[data-store]").forEach(function (a) {
+      a.addEventListener("click", function () { openStore(a.getAttribute("data-store")); });
+    });
+  }
+
+  // ---- 통합 ----
+  function renderOverview() {
+    var d = data;
+    $("kTotal").innerHTML = n(d.total) + "<small>장</small>";
+    $("kUsed").innerHTML = n(d.used) + "<small>장</small>";
+    $("kUnused").innerHTML = n(d.unused) + "<small>장</small>";
+    $("kRate").textContent = pctStr(d.used, d.total);
+    $("kToday").innerHTML = n(d.todayUsed) + "<small>장</small>";
+    $("kTodayNote").textContent = "오늘 발급 " + n(d.todayIssued) + "장";
+    $("kMeter").style.width = pct(d.used, d.total) + "%";
+    $("kUsedPct").textContent = pctStr(d.used, d.total);
+    $("kUnusedPct").textContent = pctStr(d.unused, d.total);
+
+    lineChart($("cDaily"), d.daily.map(function (x) { return x.date; }), [
+      { name: "발급", color: "var(--issued)", values: d.daily.map(function (x) { return x.issued; }) },
+      { name: "사용완료", color: "var(--used)", values: d.daily.map(function (x) { return x.used; }) }
+    ]);
+    rankChart($("cRank"));
+    columnChart($("cHourly"), d.hourly);
+    $("tRecent").innerHTML = recentTable(d.recent, true);
+    bindStoreLinks($("tRecent"));
+  }
+
+  // 매장별 발급 순위: 사용완료 + 미사용 누적 가로 막대
+  function rankChart(box) {
+    var d = data;
+    if (!d.total) { box.innerHTML = '<div class="empty">아직 발급된 쿠폰이 없어요</div>'; return; }
+    var rows = d.stores.slice().sort(function (a, b) { return d.byStore[b].issued - d.byStore[a].issued || d.byStore[b].used - d.byStore[a].used; });
+    var max = Math.max(1, d.byStore[rows[0]].issued);
+    box.innerHTML = '<div class="rank">' + rows.map(function (nm, i) {
+      var b = d.byStore[nm];
+      var wu = b.used / max * 100, wn = b.unused / max * 100;
+      return '<div class="no">' + (i + 1) + '</div><div class="nm"><a data-store="' + esc(nm) + '" style="color:inherit;text-decoration:none;cursor:pointer">' + esc(nm.replace(/^퐁당\s*/, "")) + '</a></div>' +
+        '<div class="tr" data-i="' + i + '">' + (b.used ? '<i class="u" style="width:' + wu + '%"></i>' : '') + (b.unused ? '<i class="n" style="width:' + wn + '%"></i>' : '') + '</div>' +
+        '<div class="vl"><b>' + n(b.issued) + '</b> · ' + pctStr(b.used, b.issued) + '</div>';
+    }).join("") + '</div>';
+    bindStoreLinks(box);
+    var tip = tipEl(box);
+    box.querySelectorAll(".tr").forEach(function (t) {
+      function on(ev) {
+        var nm = rows[Number(t.getAttribute("data-i"))], b = d.byStore[nm], r = box.getBoundingClientRect();
+        tip.innerHTML = '<b>' + esc(nm) + '</b><div>발급<strong>' + n(b.issued) + '장</strong></div>' +
+          '<div><i class="sw" style="background:var(--used)"></i>사용완료<strong>' + n(b.used) + '장</strong></div>' +
+          '<div><i class="sw" style="background:var(--used-track)"></i>미사용<strong>' + n(b.unused) + '장</strong></div>' +
+          '<div>사용률<strong>' + pctStr(b.used, b.issued) + '</strong></div>';
+        placeTip(box, tip, ev.clientX - r.left, ev.clientY - r.top);
+      }
+      t.addEventListener("pointermove", on); t.addEventListener("pointerdown", on);
+      t.addEventListener("pointerleave", function () { tip.style.display = "none"; });
+    });
+  }
+
+  // ---- 매장별 ----
+  var COLS = [
+    { k: "name", t: "매장" }, { k: "issued", t: "발급", num: 1 }, { k: "used", t: "사용완료", num: 1 }, { k: "unused", t: "미사용", num: 1 },
+    { k: "rate", t: "사용률", num: 1 }, { k: "todayIssued", t: "오늘 발급", num: 1 }, { k: "todayUsed", t: "오늘 사용", num: 1 },
+    { k: "last7Used", t: "최근 7일 사용", num: 1 }, { k: "lastUsedAt", t: "최근 사용" }
+  ];
+  function renderStores() {
+    var d = data;
+    $("cmpView").classList.toggle("hidden", !!sel);
+    $("oneView").classList.toggle("hidden", !sel);
+    if (sel && d.byStore[sel]) return renderOne(sel);
+    sel = "";
+
+    var rows = d.stores.map(function (nm) {
+      var b = d.byStore[nm];
+      return { name: nm, issued: b.issued, used: b.used, unused: b.unused, rate: b.issued ? b.used / b.issued : -1,
+        todayIssued: b.todayIssued, todayUsed: b.todayUsed, last7Used: b.last7Used, lastUsedAt: b.lastUsedAt };
+    });
+    rows.sort(function (a, b) {
+      var x = a[sortKey], y = b[sortKey];
+      if (x === y) return a.name < b.name ? -1 : 1;
+      return (x < y ? -1 : 1) * sortDir;
+    });
+    var head = '<tr>' + COLS.map(function (c) {
+      var on = c.k === sortKey;
+      return '<th class="sort' + (c.num ? ' num' : '') + '" data-k="' + c.k + '" aria-sort="' + (on ? (sortDir > 0 ? "ascending" : "descending") : "none") + '">' +
+        c.t + '<span class="ar">' + (on ? (sortDir > 0 ? "▲" : "▼") : "") + '</span></th>';
+    }).join("") + '</tr>';
+    var body = rows.map(function (r) {
+      return '<tr' + (r.issued ? '' : ' class="zero"') + '><td><a data-store="' + esc(r.name) + '">' + esc(r.name) + '</a></td>' +
+        '<td class="num">' + n(r.issued) + '</td><td class="num">' + n(r.used) + '</td><td class="num">' + n(r.unused) + '</td>' +
+        '<td class="num"><span class="mini"><i style="width:' + (r.rate > 0 ? r.rate * 100 : 0) + '%"></i></span>' + (r.rate >= 0 ? (r.rate * 100).toFixed(1) + "%" : "–") + '</td>' +
+        '<td class="num">' + n(r.todayIssued) + '</td><td class="num">' + n(r.todayUsed) + '</td><td class="num">' + n(r.last7Used) + '</td>' +
+        '<td>' + (r.lastUsedAt ? esc(r.lastUsedAt) : "–") + '</td></tr>';
+    }).join("");
+    var sum = function (k) { return d.stores.reduce(function (a, nm) { return a + d.byStore[nm][k]; }, 0); };
+    var foot = '<tr class="total"><td>합계 (' + d.stores.length + '개 매장)</td><td class="num">' + n(d.total) + '</td><td class="num">' + n(d.used) + '</td><td class="num">' + n(d.unused) + '</td>' +
+      '<td class="num">' + pctStr(d.used, d.total) + '</td><td class="num">' + n(d.todayIssued) + '</td><td class="num">' + n(d.todayUsed) + '</td><td class="num">' + n(sum("last7Used")) + '</td><td></td></tr>';
+    $("tStores").innerHTML = '<table class="tbl"><thead>' + head + '</thead><tbody>' + body + foot + '</tbody></table>';
+    $("tStores").querySelectorAll("th.sort").forEach(function (th) {
+      th.addEventListener("click", function () {
+        var k = th.getAttribute("data-k");
+        if (k === sortKey) sortDir = -sortDir; else { sortKey = k; sortDir = k === "name" ? 1 : -1; }
+        renderStores();
+      });
+    });
+    bindStoreLinks($("tStores"));
+  }
+
+  function renderOne(nm) {
+    var d = data, b = d.byStore[nm];
+    var byUsed = d.stores.slice().sort(function (x, y) { return d.byStore[y].used - d.byStore[x].used; });
+    $("sName").textContent = nm + " · 발급";
+    $("sIssued").innerHTML = n(b.issued) + "<small>장</small>";
+    $("sMeter").style.width = pct(b.used, b.issued) + "%";
+    $("sUsedPct").textContent = pctStr(b.used, b.issued);
+    $("sUnusedPct").textContent = pctStr(b.unused, b.issued);
+    $("sUsed").innerHTML = n(b.used) + "<small>장</small>";
+    $("sRank").textContent = b.used ? "사용완료 " + d.stores.length + "개 매장 중 " + (byUsed.indexOf(nm) + 1) + "위" : "아직 사용 없음";
+    $("sUnused").innerHTML = n(b.unused) + "<small>장</small>";
+    $("sRate").textContent = pctStr(b.used, b.issued);
+    $("sRateCmp").textContent = "전체 평균 " + pctStr(d.used, d.total);
+    $("sToday").innerHTML = n(b.todayUsed) + "<small>장</small>";
+    $("sTodayNote").textContent = "오늘 발급 " + n(b.todayIssued) + "장";
+    $("sDailySub").textContent = nm + ", 날짜별 건수";
+    lineChart($("cStoreDaily"), d.daily.map(function (x) { return x.date; }), [
+      { name: "발급", color: "var(--issued)", values: d.daily.map(function (x) { return (x.s[nm] || [0, 0])[0]; }) },
+      { name: "사용완료", color: "var(--used)", values: d.daily.map(function (x) { return (x.s[nm] || [0, 0])[1]; }) }
+    ]);
+    $("tStoreRecent").innerHTML = recentTable(d.recent.filter(function (r) { return r.store === nm; }), false);
+  }
+
+  // ---- 차트 도구 ----
+  // 눈금: 1·2·5 단위의 정수 간격, 4칸 안팎
+  function scale(v) {
+    var raw = Math.max(1, v) / 4, p = Math.pow(10, Math.floor(Math.log10(raw))), m = raw / p;
+    var step = Math.max(1, (m <= 1 ? 1 : m <= 2 ? 2 : m <= 5 ? 5 : 10) * p);
+    var count = Math.max(1, Math.ceil(Math.max(1, v) / step));
+    return { max: step * count, step: step, count: count };
+  }
+  function tipEl(box) {
+    var t = box.querySelector(".tip");
+    if (!t) { t = document.createElement("div"); t.className = "tip"; box.appendChild(t); }
+    return t;
+  }
+  function placeTip(box, tip, x, y) {
+    tip.style.display = "block";
+    var w = tip.offsetWidth, bw = box.clientWidth;
+    var left = x + 14; if (left + w > bw) left = x - w - 14; if (left < 0) left = 0;
+    tip.style.left = left + "px"; tip.style.top = Math.max(0, y - 10) + "px";
+  }
+
+  function lineChart(box, labels, series) {
+    var total = series.reduce(function (a, s) { return a + s.values.reduce(function (x, y) { return x + y; }, 0); }, 0);
+    if (!labels.length || !total) { box.innerHTML = '<div class="empty">아직 기록이 없어요</div>'; return; }
+    var W = Math.max(280, box.clientWidth), H = 240, L = 34, R = 44, T = 14, B = 26;
+    var iw = W - L - R, ih = H - T - B;
+    var sc = scale(Math.max.apply(null, series.map(function (s) { return Math.max.apply(null, s.values); }))), maxV = sc.max;
+    var x = function (i) { return labels.length === 1 ? L + iw / 2 : L + i * iw / (labels.length - 1); };
+    var y = function (v) { return T + ih - v / maxV * ih; };
+    var g = "";
+    for (var k = 0; k <= sc.count; k++) {
+      var tv = sc.step * k, ty = y(tv);
+      g += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + ty + '" y2="' + ty + '" stroke="' + (k ? "var(--grid)" : "var(--axis)") + '" stroke-width="1"/>';
+      g += '<text x="' + (L - 8) + '" y="' + (ty + 4) + '" text-anchor="end" style="font-variant-numeric:tabular-nums">' + n(tv) + '</text>';
+    }
+    var every = Math.max(1, Math.ceil(labels.length / Math.max(2, Math.floor(iw / 64))));
+    labels.forEach(function (lb, i) {
+      if (i % every === 0 || i === labels.length - 1) {
+        if (i !== labels.length - 1 && labels.length - 1 - i < every * .6) return;
+        g += '<text x="' + x(i) + '" y="' + (H - 6) + '" text-anchor="middle">' + shortDate(lb) + '</text>';
+      }
+    });
+    var ends = [];
+    series.forEach(function (s) {
+      var dpath = s.values.map(function (v, i) { return (i ? "L" : "M") + x(i).toFixed(1) + "," + y(v).toFixed(1); }).join("");
+      g += '<path d="' + dpath + '" fill="none" stroke="' + s.color + '" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>';
+      var li = s.values.length - 1;
+      g += '<circle cx="' + x(li) + '" cy="' + y(s.values[li]) + '" r="4" fill="' + s.color + '" stroke="var(--surface)" stroke-width="2"/>';
+      ends.push({ y: y(s.values[li]), v: s.values[li] });
+    });
+    // 끝값 라벨: 서로 겹치지 않을 때만
+    var clash = ends.some(function (a, i) { return ends.some(function (b, j) { return i !== j && Math.abs(a.y - b.y) < 14; }); });
+    if (!clash) ends.forEach(function (e) { g += '<text class="lab" x="' + (W - R + 8) + '" y="' + (e.y + 4) + '">' + n(e.v) + '</text>'; });
+    g += '<line class="xh" x1="0" x2="0" y1="' + T + '" y2="' + (T + ih) + '" stroke="var(--axis)" stroke-width="1" style="display:none"/>';
+    g += '<g class="hd"></g>';
+    g += '<rect x="' + L + '" y="0" width="' + iw + '" height="' + (H - B) + '" fill="transparent" class="hit"/>';
+    box.innerHTML = '<svg viewBox="0 0 ' + W + ' ' + H + '" height="' + H + '" role="img" aria-label="일별 추이 선 그래프">' + g + '</svg>';
+
+    var svg = box.querySelector("svg"), xh = svg.querySelector(".xh"), hd = svg.querySelector(".hd"), tip = tipEl(box);
+    function move(ev) {
+      var r = svg.getBoundingClientRect(), px = (ev.clientX - r.left) * W / r.width;
+      var i = labels.length === 1 ? 0 : Math.round((px - L) / iw * (labels.length - 1));
+      i = Math.max(0, Math.min(labels.length - 1, i));
+      xh.setAttribute("x1", x(i)); xh.setAttribute("x2", x(i)); xh.style.display = "";
+      hd.innerHTML = series.map(function (s) { return '<circle cx="' + x(i) + '" cy="' + y(s.values[i]) + '" r="4" fill="' + s.color + '" stroke="var(--surface)" stroke-width="2"/>'; }).join("");
+      tip.innerHTML = '<b>' + esc(labels[i].replace(/-/g, ".")) + '</b>' + series.map(function (s) {
+        return '<div><i class="sw line" style="background:' + s.color + '"></i>' + esc(s.name) + '<strong>' + n(s.values[i]) + '건</strong></div>';
+      }).join("");
+      placeTip(box, tip, x(i) * r.width / W, (ev.clientY - r.top));
+    }
+    function leave() { xh.style.display = "none"; hd.innerHTML = ""; tip.style.display = "none"; }
+    var hit = svg.querySelector(".hit");
+    hit.addEventListener("pointermove", move); hit.addEventListener("pointerdown", move); hit.addEventListener("pointerleave", leave);
+  }
+
+  function columnChart(box, hourly) {
+    var total = hourly.reduce(function (a, b) { return a + b; }, 0);
+    if (!total) { box.innerHTML = '<div class="empty">아직 사용 내역이 없어요</div>'; return; }
+    var lo = 11, hi = 22;
+    hourly.forEach(function (v, h) { if (v) { lo = Math.min(lo, h); hi = Math.max(hi, h); } });
+    var hours = []; for (var h = lo; h <= hi; h++) hours.push(h);
+    var W = Math.max(260, box.clientWidth), H = 220, L = 30, R = 6, T = 18, B = 24;
+    var iw = W - L - R, ih = H - T - B, band = iw / hours.length;
+    var bw = Math.min(24, band * 0.62);
+    var sc = scale(Math.max.apply(null, hourly)), maxV = sc.max;
+    var y = function (v) { return T + ih - v / maxV * ih; };
+    var peak = hours.reduce(function (a, h) { return hourly[h] > hourly[a] ? h : a; }, hours[0]);
+    var g = "";
+    for (var k = 0; k <= sc.count; k++) {
+      var tv = sc.step * k, ty = y(tv);
+      g += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + ty + '" y2="' + ty + '" stroke="' + (k ? "var(--grid)" : "var(--axis)") + '" stroke-width="1"/>';
+      g += '<text x="' + (L - 8) + '" y="' + (ty + 4) + '" text-anchor="end">' + n(tv) + '</text>';
+    }
+    var labelEvery = band < 34 ? 2 : 1;
+    hours.forEach(function (h, i) {
+      var v = hourly[h], cx = L + band * i + band / 2, x0 = cx - bw / 2, top = y(v), base = T + ih, hh = base - top, r = Math.min(4, hh, bw / 2);
+      if (v) g += '<path d="M' + x0 + ',' + base + 'L' + x0 + ',' + (top + r) + 'Q' + x0 + ',' + top + ' ' + (x0 + r) + ',' + top + 'L' + (x0 + bw - r) + ',' + top + 'Q' + (x0 + bw) + ',' + top + ' ' + (x0 + bw) + ',' + (top + r) + 'L' + (x0 + bw) + ',' + base + 'Z" fill="var(--used)"/>';
+      if (h === peak && v) g += '<text class="lab" x="' + cx + '" y="' + (top - 6) + '" text-anchor="middle">' + n(v) + '</text>';
+      if (i % labelEvery === 0) g += '<text x="' + cx + '" y="' + (H - 6) + '" text-anchor="middle">' + h + '시</text>';
+      g += '<rect class="bh" data-h="' + h + '" x="' + (L + band * i) + '" y="' + T + '" width="' + band + '" height="' + ih + '" fill="transparent"/>';
+    });
+    box.innerHTML = '<svg viewBox="0 0 ' + W + ' ' + H + '" height="' + H + '" role="img" aria-label="시간대별 사용 막대 그래프">' + g + '</svg>';
+    var svg = box.querySelector("svg"), tip = tipEl(box);
+    svg.querySelectorAll(".bh").forEach(function (rc) {
+      function on(ev) {
+        var hh = Number(rc.getAttribute("data-h")), r = svg.getBoundingClientRect();
+        rc.setAttribute("fill", css("--hover"));
+        tip.innerHTML = '<b>' + hh + '시 ~ ' + (hh + 1) + '시</b><div><i class="sw" style="background:var(--used)"></i>사용완료<strong>' + n(hourly[hh]) + '건</strong></div>';
+        placeTip(box, tip, ev.clientX - r.left, ev.clientY - r.top);
+      }
+      rc.addEventListener("pointermove", on); rc.addEventListener("pointerdown", on);
+      rc.addEventListener("pointerleave", function () { rc.setAttribute("fill", "transparent"); tip.style.display = "none"; });
+    });
+  }
+
+
+  // ---- 시작 ----
+  document.querySelectorAll(".nav").forEach(function (b) { b.addEventListener("click", function () { setView(b.getAttribute("data-view")); }); });
+  document.querySelectorAll("[data-refresh]").forEach(function (b) { b.addEventListener("click", function () { load(true); }); });
+  $("refreshBtn").addEventListener("click", function () { load(true); });
+  $("storeSel").addEventListener("change", function () { sel = this.value; if (data) render(); });
+  var rz; window.addEventListener("resize", function () { clearTimeout(rz); rz = setTimeout(function () { if (data) render(); }, 150); });
+
+  var v0 = ls(function () { return localStorage.getItem("pongdang-fdash-view"); });
+  setView(v0 === "stores" ? "stores" : "overview");
+  load(true);
+  timer = setInterval(function () { if (!document.hidden) load(false); }, REFRESH_MS);
+</script>
+</body>
+</html>
