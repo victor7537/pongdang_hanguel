@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="color-scheme" content="dark">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#211c17">
+<title>오늘의 맞춤법 퀴즈 · 퐁당</title>
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nanum+Brush+Script&family=Gowun+Batang:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #211c17;
+    --paper-2: #2b251f;
+    --ink: #f1e8da;
+    --ink-soft: #b9ad9c;
+    --red: #ea5a4c;
+    --red-deep: #ff7a6c;
+    --line: rgba(241,232,218,.2);
+    --ok: #7fc08a;
+    --ok-btn: #3d8a4c;
+    --brush: "Nanum Brush Script", "Gowun Batang", serif;
+    --serif: "Gowun Batang", "Noto Serif KR", "Apple SD Gothic Neo", serif;
+    color-scheme: dark;
+  }
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--serif);
+    line-height: 1.7;
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+    position: relative;
+    overflow-x: hidden;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  .jamo { position: fixed; font-family: var(--brush); color: var(--ink); opacity: .09; pointer-events: none; user-select: none; }
+  .j1 { top: 16%; left: 4%; font-size: 84px; }
+  .j2 { top: 46%; right: 5%; font-size: 96px; }
+  .j3 { bottom: 10%; left: 7%; font-size: 72px; }
+
+  main { position: relative; max-width: 520px; margin: 0 auto; padding: 22px 22px 48px; }
+
+  .date {
+    display: flex; align-items: center; justify-content: center; gap: 12px;
+    font-weight: 700; letter-spacing: .04em; font-size: 15px;
+  }
+  .date::before, .date::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+
+  .logo { display: flex; flex-direction: column; align-items: center; margin: 18px 0 8px; }
+  .logo small { font-size: 12px; font-weight: 700; color: var(--ink-soft); }
+  .logo b { font-family: var(--brush); font-size: 56px; line-height: 1; font-weight: 400; }
+  .logo .pot { width: 150px; height: 18px; border: 2.5px solid var(--ink); border-top: none; border-radius: 0 0 90px 90px; margin-top: 2px; }
+
+  h1 {
+    font-family: var(--brush); font-weight: 400; margin: 18px 0 6px;
+    font-size: clamp(44px, 13vw, 62px); line-height: 1.05; text-align: center;
+  }
+  h1 .r { color: var(--red); }
+  h2 { font-family: var(--brush); font-weight: 400; font-size: 44px; line-height: 1.1; text-align: center; margin: 14px 0 6px; }
+  .lead { text-align: center; color: var(--ink-soft); margin: 0 0 26px; font-size: 15px; word-break: keep-all; }
+
+  .card { background: var(--paper-2); border: 1px solid var(--line); border-radius: 6px; padding: 22px 20px; }
+
+  .progress { display: flex; gap: 6px; margin-bottom: 18px; }
+  .progress i { flex: 1; height: 5px; background: var(--line); border-radius: 3px; }
+  .progress i.done { background: var(--red); }
+  .progress i.now { background: var(--ink); }
+
+  .qmeta { font-size: 14px; color: var(--ink-soft); margin: 0 0 6px; }
+  .q { font-size: 21px; font-weight: 700; line-height: 1.55; margin: 0 0 20px; word-break: keep-all; }
+  .blank { display: inline-block; min-width: 3.2em; border-bottom: 2.5px solid var(--red); text-align: center; color: var(--red); }
+
+  .hintBtn {
+    font-size: 15px; font-weight: 700; color: var(--red); background: transparent;
+    border: 1.5px solid var(--red); border-radius: 999px; padding: 7px 16px; margin: -6px 0 14px; cursor: pointer;
+  }
+  .hintBtn:hover:not(:disabled) { background: rgba(234,90,76,.1); }
+  .hintBtn:disabled { opacity: .55; cursor: default; }
+  .hintBtn:focus-visible { outline: 3px solid var(--red); outline-offset: 2px; }
+  .hint { margin: -4px 0 16px; padding: 10px 14px; font-size: 15px; word-break: keep-all; border-left: 4px solid var(--red); background: var(--paper); }
+  .choices { display: grid; gap: 10px; }
+  button, input { font-family: inherit; }
+  .choice {
+    text-align: left; font-size: 19px; font-weight: 700;
+    padding: 14px 16px; border: 1.5px solid var(--ink); border-radius: 4px;
+    background: transparent; color: var(--ink); cursor: pointer; min-height: 52px;
+  }
+  .choice:hover:not(:disabled) { background: rgba(234,90,76,.1); }
+  .choice:focus-visible, .btn:focus-visible { outline: 3px solid var(--red); outline-offset: 2px; }
+  .choice.right { border-color: var(--ok); background: rgba(127,192,138,.16); }
+  .choice.wrong { border-color: var(--red); background: rgba(234,90,76,.14); text-decoration: line-through; text-decoration-thickness: 1.5px; }
+  .choice:disabled { cursor: default; }
+
+  .explain { margin-top: 16px; padding-top: 14px; border-top: 1px dashed var(--line); font-size: 15.5px; word-break: keep-all; }
+  .explain strong { color: var(--red); }
+
+  .btn {
+    display: block; width: 100%; margin-top: 18px; padding: 15px;
+    font-size: 18px; font-weight: 700; border: none; border-radius: 4px;
+    background: var(--red); color: #fff; cursor: pointer;
+  }
+  .btn:hover:not(:disabled) { background: var(--red-deep); }
+  .btn:disabled { opacity: .6; cursor: default; }
+  .btn.ghost { background: transparent; color: var(--ink); border: 1.5px solid var(--ink); }
+  .btn.ghost:hover:not(:disabled) { background: rgba(241,232,218,.08); }
+  .btn.staff { background: var(--ok-btn); color: #fff; }
+  .btn.staff:hover:not(:disabled) { filter: brightness(1.1); }
+
+  .hidden { display: none !important; }
+
+  /* 휴대폰 번호 입력 */
+  .field { margin-top: 18px; }
+  .field label { display: block; font-weight: 700; font-size: 15px; margin-bottom: 6px; }
+  .field input[type="tel"] {
+    width: 100%; font-size: 22px; font-weight: 700; letter-spacing: .04em;
+    padding: 12px 14px; border: 1.5px solid var(--ink); border-radius: 4px;
+    background: var(--paper); color: var(--ink);
+  }
+  .field input[type="tel"]:focus { outline: 3px solid var(--red); outline-offset: 1px; }
+  .agree { display: flex; gap: 8px; align-items: flex-start; margin-top: 12px; font-size: 14.5px; word-break: keep-all; cursor: pointer; }
+  .agree input { width: 20px; height: 20px; margin: 3px 0 0; accent-color: var(--red); flex: none; }
+  .privacy { margin: 6px 0 0 28px; font-size: 12.5px; color: var(--ink-soft); word-break: keep-all; line-height: 1.6; }
+  .err { margin: 12px 0 0; color: var(--red-deep); font-size: 15px; font-weight: 700; word-break: keep-all; }
+  .notice { margin: 16px 0 0; padding: 10px 14px; font-size: 15px; word-break: keep-all; border-left: 4px solid var(--ink-soft); background: var(--paper); }
+
+  /* 결과 */
+  #resultCard { overflow: hidden; } /* 도장 애니메이션이 화면 밖으로 커지지 않게 */
+  .stamp { text-align: center; font-family: var(--brush); font-size: 64px; line-height: 1; color: var(--red); margin: 4px 0 4px; transform: rotate(-3deg); }
+  .resmsg { text-align: center; margin: 0 0 4px; word-break: keep-all; }
+
+  /* 쿠폰 */
+  .couponWrap { position: relative; margin-top: 18px; }
+  .coupon {
+    position: relative; padding: 22px 20px 20px;
+    background: var(--paper); border: 2px solid var(--red); border-radius: 4px; text-align: center;
+  }
+  .coupon::before, .coupon::after {
+    content: ""; position: absolute; top: 50%; width: 22px; height: 22px; margin-top: -11px;
+    background: var(--paper-2); border: 2px solid var(--red); border-radius: 50%;
+  }
+  .coupon::before { left: -13px; } .coupon::after { right: -13px; }
+  .coupon .brand { font-family: var(--brush); font-size: 40px; line-height: 1; }
+  .coupon .tag { font-size: 14px; color: var(--ink-soft); margin: 2px 0 12px; }
+  .coupon .off { font-family: var(--brush); font-size: 40px; color: var(--red); line-height: 1.1; }
+  .coupon .note { font-size: 13px; color: var(--ink-soft); margin-top: 10px; word-break: keep-all; }
+  .coupon .msg { color: var(--ink); font-weight: 700; }
+  .serial { margin: 14px auto 0; padding: 10px 12px; border: 1.5px dashed var(--line); border-radius: 4px; max-width: 260px; }
+  .serial span { display: block; font-size: 12.5px; color: var(--ink-soft); }
+  .serial b { display: block; font-size: 32px; letter-spacing: .18em; line-height: 1.3; font-variant-numeric: tabular-nums; }
+  .coupon.used { filter: grayscale(1); opacity: .5; }
+  .coupon.used .off { text-decoration: line-through; }
+  .usedMark {
+    position: absolute; top: 34%; left: 50%; transform: translate(-50%, -50%) rotate(-12deg);
+    font-family: var(--brush); font-size: 52px; line-height: 1; color: var(--red);
+    border: 4px solid var(--red); border-radius: 8px; padding: 6px 16px 2px; background: rgba(33,28,23,.75);
+    white-space: nowrap; pointer-events: none;
+  }
+
+  .doneBox {
+    margin-top: 16px; padding: 18px 16px; text-align: center; word-break: keep-all;
+    border: 2px solid var(--ok); background: rgba(127,192,138,.12); border-radius: 4px; line-height: 1.75;
+  }
+  .doneBox b { display: block; font-family: var(--brush); font-weight: 400; font-size: 34px; color: var(--ok); line-height: 1.2; margin-bottom: 4px; }
+  .doneBox.was { border-color: var(--red); background: rgba(234,90,76,.1); }
+  .doneBox.was b { color: var(--red); }
+  .doneBox small { display: block; color: var(--ink-soft); font-size: 13.5px; }
+  .here { margin: 2px auto 0; width: fit-content; padding: 4px 14px; border: 1.5px solid var(--red); border-radius: 999px; color: var(--ink); font-weight: 700; font-size: 14px; }
+  .coupon .only { display: inline-block; margin: 0 0 12px; padding: 3px 12px; border-radius: 999px; background: var(--red); color: #fff; font-weight: 700; font-size: 14px; }
+  .codeBox { margin-top: 16px; padding: 16px; border: 1.5px solid var(--ok); border-radius: 4px; }
+  .codeBox p { margin: 0 0 10px; text-align: center; font-weight: 700; word-break: keep-all; }
+  .codeBox input {
+    width: 100%; font-size: 30px; font-weight: 700; letter-spacing: .5em; text-align: center; padding: 10px 0 10px .5em;
+    border: 1.5px solid var(--ink); border-radius: 4px; background: var(--paper); color: var(--ink);
+  }
+  .codeBox input:focus { outline: 3px solid var(--ok); outline-offset: 1px; }
+  .fine { margin-top: 26px; text-align: center; font-size: 12px; color: var(--ink-soft); }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .stamp { animation: stampin .5s cubic-bezier(.2,1.4,.4,1) both; }
+    @keyframes stampin { from { transform: scale(2.2) rotate(-8deg); opacity: 0; } to { transform: scale(1) rotate(-3deg); opacity: 1; } }
+  }
+</style>
+</head>
+<body>
+<span class="jamo j1" aria-hidden="true">ㄱㄴ</span>
+<span class="jamo j2" aria-hidden="true">ㅎㅁ</span>
+<span class="jamo j3" aria-hidden="true">ㅏㅜ</span>
+
+<main>
+  <div class="date">10월 9일 한글날</div>
+
+  <div class="logo">
+    <small>내맘대로 샤브를,</small>
+    <b>퐁당</b>
+    <div class="pot" aria-hidden="true"></div>
+  </div>
+  <p class="here hidden" id="here"></p>
+
+  <!-- 시작 화면 -->
+  <section id="start">
+    <h1>우리말에 <span class="r">퐁당</span>,<br>맛에 <span class="r">퐁당</span></h1>
+    <p class="lead">오늘의 맞춤법 퀴즈 5문제,<br>3문제 이상 맞히면 한글날 기념 10.9% 할인쿠폰을 드립니다.</p>
+    <div class="card">
+      <p style="margin:0;word-break:keep-all">이름부터 정겨운 순우리말 브랜드 퐁당이 준비한 한글날 이벤트예요. 일상에서 자주 헷갈리는 맞춤법 5문제에 도전해 보세요. 막히면 힌트를 볼 수 있어요.</p>
+      <p class="notice hidden" id="noStore">매장에 비치된 QR코드를 찍어서 참여해 주세요.<br>이미 받은 쿠폰은 아래 '나의 쿠폰 조회'에서 확인할 수 있어요.</p>
+      <button class="btn" id="startBtn" type="button">퀴즈 시작하기</button>
+      <button class="btn ghost" id="lookupBtn" type="button">나의 쿠폰 조회</button>
+    </div>
+  </section>
+
+  <!-- 퀴즈 화면 -->
+  <section id="quiz" class="hidden" aria-live="polite">
+    <div class="card">
+      <div class="progress" id="progress" aria-hidden="true"></div>
+      <p class="qmeta" id="qmeta"></p>
+      <p class="q" id="qtext"></p>
+      <button class="hintBtn" id="hintBtn" type="button">힌트 보기</button>
+      <div class="hint hidden" id="hint"></div>
+      <div class="choices" id="choices"></div>
+      <div class="explain hidden" id="explain"></div>
+      <button class="btn hidden" id="nextBtn" type="button"></button>
+    </div>
+  </section>
+
+  <!-- 결과 화면 -->
+  <section id="result" class="hidden">
+    <div class="card" id="resultCard"></div>
+  </section>
+
+  <!-- 나의 쿠폰 조회 -->
+  <section id="lookup" class="hidden">
+    <h2>나의 쿠폰 조회</h2>
+    <p class="lead" style="margin-bottom:18px">쿠폰을 발급받은 휴대폰 번호를 입력해 주세요.</p>
+    <div class="card">
+      <form id="lookupForm" novalidate>
+        <div class="field" style="margin-top:0">
+          <label for="lookupPhone">휴대폰 번호</label>
+          <input type="tel" id="lookupPhone" inputmode="numeric" autocomplete="tel" placeholder="010-0000-0000" maxlength="13">
+        </div>
+        <p class="err hidden" id="lookupErr" role="alert"></p>
+        <button class="btn" id="lookupSubmit" type="submit">쿠폰 조회하기</button>
+      </form>
+      <div id="lookupArea"></div>
+      <button class="btn ghost" id="lookupBack" type="button">처음 화면으로</button>
+    </div>
+  </section>
+
+  <p class="fine">음식 이미지는 연출된 이미지입니다.</p>
+</main>
+
+<script>
+  // ▼ 매장/본사에서 수정하는 영역 ▼
+  var COUPON = {
+    title: "한글날 기념 할인쿠폰!",
+    benefit: "결제금액의 10.9% 할인",
+    message: "10월 9일을 기억하는 의미로 10.9% 할인쿠폰을 제공해드립니다!",
+    note: "결제 전 직원에게 이 화면을 보여주세요."   // 유효기간·사용조건이 있다면 여기에 추가
+  };
+  var PASS_SCORE = 3; // 쿠폰 지급 기준(정답 개수, 5문제 중)
+  var API_URL = "https://script.google.com/macros/s/AKfycbxkT700tLiWe47XVS9Z5Nbs3Jz7TWTMjdPbsvJ1ZI49S4fN_7Uh_GVSe-cmJHhyF8Hp/exec"; // 가맹점용 Apps Script 웹 앱 주소
+  var PRIVACY ="수집 항목: 휴대폰 번호 · 이용 목적: 할인쿠폰 발급 및 사용 확인 · 보유 기간: 이벤트 종료 후 즉시 파기. 동의하지 않으실 수 있으며, 이 경우 쿠폰 발급이 어렵습니다.";
+  // QR 주소의 ?store= 값 → 매장명 (확인코드는 서버에만 있음)
+  var STORES = {
+    "tangjeong": "퐁당 탕정점",
+    "jeonju-hyeoksin": "퐁당 전주혁신점",
+    "gongju": "퐁당 공주점",
+    "daegu-manchon": "퐁당 대구만촌점",
+    "sejong-cityhall": "퐁당 세종시청점",
+    "iksan-yeongdeung": "퐁당 익산영등점",
+    "naepo": "퐁당 내포신도시점",
+    "jeonju-docheong": "퐁당 전주도청점",
+    "gwanjeo": "퐁당 관저점",
+    "jochiwon": "퐁당 조치원점",
+    "dunsan": "퐁당 둔산점",
+    "jeongeup": "퐁당 정읍점",
+    "osong": "퐁당 오송점",
+    "mohyeon": "퐁당 모현점",
+    "gwangju-cheomdan": "퐁당 광주첨단점",
+    "yuseong": "퐁당 유성점",
+    "gimpo-gurae": "퐁당 김포구래점",
+    "nonsan": "퐁당 논산점",
+    "sejong": "퐁당 세종점",
+    "cheongju-bongmyeong": "퐁당 청주봉명점",
+    "jeonju-songcheon": "퐁당 전주송천점"
+  };
+  // ▲ 여기까지 ▲
+
+  var QUESTIONS = [
+    { q: "손님, (   ) 일로 이렇게 일찍 오셨어요?", a: ["웬", "왠"], correct: 0,
+      hint: "'왠'은 '왜인지'를 줄인 '왠지'에서만 쓰여요. 그 밖의 경우에는 다른 글자를 써요.",
+      why: "'웬'은 '어찌 된, 어떠한'이라는 뜻이라 '웬 일', '웬걸', '웬만큼'처럼 써요. '왠'은 '왜인지'의 준말인 '왠지' 하나로만 쓰입니다." },
+    { q: "육수에 밥을 말아 먹어도 (   )?", a: ["되요", "돼요"], correct: 1,
+      hint: "'되어요'를 줄인 말이에요. '하요'와 '해요' 중 어느 쪽이 자연스러운지 떠올려 보세요.",
+      why: "'되어요'의 준말은 '돼요'예요. '되요'라는 활용형은 없어요. '하'를 넣어 어색하면 '해'에 해당하는 '돼'를 쓰면 됩니다." },
+    { q: "육수에 살짝 담근 소고기가 (   ) 익었어요.", a: ["금새", "금세"], correct: 1,
+      hint: "'금시에'가 줄어든 말로, '곧바로'라는 뜻이에요.",
+      why: "'금세'는 '금시에'의 준말이에요. '금새'도 실제로 있는 낱말이지만 물건의 값이나 시세를 뜻해서 이 문장에는 맞지 않아요." },
+    { q: "감기가 얼른 (   ) 위해 따뜻한 국물을 챙겨 먹었어요.", a: ["낳기", "낫기", "낮기"], correct: 1,
+      hint: "병이 사라지고 건강해지는 상황이에요. 아이나 알을 낳는 것도, 높이가 낮은 것도 아니에요.",
+      why: "병이 없어지는 건 '낫다'예요. '낳다'는 아이·알·결과를 만들어 낼 때, '낮다'는 높이나 수준이 아래일 때 써요." },
+    { q: "한글날이 몇 월 (   )인지 알고 계세요?", a: ["몇일", "며칠"], correct: 1,
+      hint: "'몇 월'은 띄어 쓰지만, 날짜를 묻는 이 낱말은 소리 나는 대로 한 단어로 적어요.",
+      why: "날짜를 묻는 말은 '며칠'이에요. '몇일'이라는 표기는 없어요. 참고로 한글날은 10월 9일이에요." }
+  ];
+
+  var idx = 0, score = 0, answered = false;
+  var STORE_ID = (function () {
+    var m = /[?&]store=([^&#]*)/.exec(location.search);
+    var id = m ? decodeURIComponent(m[1]).trim().toLowerCase() : "";
+    return Object.prototype.hasOwnProperty.call(STORES, id) ? id : "";
+  })();
+  var $ = function (id) { return document.getElementById(id); };
+
+  function esc(s) {
+    return String(s == null ? "" : s).replace(/[&<>"']/g, function (ch) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch];
+    });
+  }
+
+  function show(id) {
+    ["start", "quiz", "result", "lookup"].forEach(function (s) { $(s).classList.toggle("hidden", s !== id); });
+    window.scrollTo(0, 0);
+  }
+
+  // ---- 서버(스프레드시트) 호출 ----
+  var NET_ERR = "연결이 원활하지 않아요. 잠시 후 다시 시도해 주세요.";
+  function call(action, payload) {
+    var body = { action: action };
+    for (var k in payload) body[k] = payload[k];
+    var ctrl = window.AbortController ? new AbortController() : null;
+    var timer = ctrl && setTimeout(function () { ctrl.abort(); }, 30000);
+    // text/plain 으로 보내야 브라우저 사전 확인(CORS preflight) 없이 바로 전송된다
+    return fetch(API_URL, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify(body),
+      redirect: "follow",
+      credentials: "omit",
+      signal: ctrl ? ctrl.signal : undefined
+    }).then(function (r) {
+      return r.json();
+    }, function () {
+      throw new Error(NET_ERR);
+    }).then(function (res) {
+      if (!res || !res.ok) throw new Error((res && res.error) || NET_ERR);
+      return res.data;
+    }).catch(function (e) {
+      throw new Error(e && e.message && !/JSON|Unexpected token/i.test(e.message) ? e.message : NET_ERR);
+    }).then(function (data) {
+      if (timer) clearTimeout(timer);
+      return data;
+    }, function (e) {
+      if (timer) clearTimeout(timer);
+      throw e;
+    });
+  }
+  function errText(e) {
+    var m = (e && e.message) ? e.message : String(e || "");
+    m = m.replace(/^(Exception|Error|ScriptError):\s*/i, "");
+    return m || NET_ERR;
+  }
+
+  // ---- 휴대폰 번호 입력 ----
+  function digits(v) { return String(v || "").replace(/\D/g, "").slice(0, 11); }
+  function formatPhone(v) {
+    var d = digits(v);
+    if (d.length < 4) return d;
+    if (d.length < 8) return d.slice(0, 3) + "-" + d.slice(3);
+    if (d.length === 10) return d.slice(0, 3) + "-" + d.slice(3, 6) + "-" + d.slice(6);
+    return d.slice(0, 3) + "-" + d.slice(3, 7) + "-" + d.slice(7);
+  }
+  function validPhone(v) { return /^01[016789]\d{7,8}$/.test(digits(v)); }
+  function bindPhoneInput(input) {
+    input.addEventListener("input", function () { input.value = formatPhone(input.value); });
+  }
+  function maskPhone(p) { return String(p).replace(/^(\d{3})-(\d{3,4})-(\d{4})$/, "$1-****-$3"); }
+
+  // ---- 퀴즈 ----
+  function renderQuestion() {
+    var item = QUESTIONS[idx];
+    answered = false;
+    $("progress").innerHTML = QUESTIONS.map(function (_, i) {
+      return '<i class="' + (i < idx ? "done" : i === idx ? "now" : "") + '"></i>';
+    }).join("");
+    $("qmeta").textContent = "오늘의 맞춤법 퀴즈 " + (idx + 1) + "/" + QUESTIONS.length;
+    $("qtext").innerHTML = item.q.replace(/\(\s+\)/, '<span class="blank">&nbsp;&nbsp;&nbsp;</span>');
+    var box = $("choices");
+    box.innerHTML = "";
+    item.a.forEach(function (label, i) {
+      var b = document.createElement("button");
+      b.type = "button"; b.className = "choice"; b.textContent = label;
+      b.addEventListener("click", function () { pick(i); });
+      box.appendChild(b);
+    });
+    $("explain").classList.add("hidden");
+    $("nextBtn").classList.add("hidden");
+    var hb = $("hintBtn");
+    hb.disabled = false; hb.textContent = "힌트 보기"; hb.classList.remove("hidden");
+    $("hint").classList.add("hidden"); $("hint").textContent = "";
+  }
+
+  function showHint() {
+    if (answered) return;
+    $("hint").textContent = "힌트: " + QUESTIONS[idx].hint;
+    $("hint").classList.remove("hidden");
+    $("hintBtn").disabled = true;
+    $("hintBtn").textContent = "힌트를 확인했어요";
+  }
+
+  function pick(i) {
+    if (answered) return;
+    answered = true;
+    var item = QUESTIONS[idx];
+    var buttons = $("choices").querySelectorAll(".choice");
+    buttons.forEach(function (b, n) {
+      b.disabled = true;
+      if (n === item.correct) b.classList.add("right");
+      else if (n === i) b.classList.add("wrong");
+    });
+    var ok = i === item.correct;
+    if (ok) score++;
+    $("hintBtn").classList.add("hidden");
+    $("hint").classList.add("hidden");
+    $("qtext").querySelector(".blank").textContent = item.a[item.correct];
+    $("explain").innerHTML = "<strong>" + (ok ? "정답이에요!" : "아쉬워요, 정답은 '" + item.a[item.correct] + "'예요.") + "</strong> " + item.why;
+    $("explain").classList.remove("hidden");
+    var last = idx === QUESTIONS.length - 1;
+    $("nextBtn").textContent = last ? "결과 보기" : "다음 문제";
+    $("nextBtn").classList.remove("hidden");
+    $("nextBtn").focus();
+  }
+
+  // ---- 쿠폰 화면 ----
+  function couponHTML(c) {
+    return '<div class="couponWrap">' +
+      '<div class="coupon' + (c.used ? " used" : "") + '">' +
+        '<div class="brand">퐁당</div><div class="tag">' + esc(COUPON.title) + '</div>' +
+        (c.issueStore ? '<div class="only">' + esc(c.issueStore) + ' 전용</div>' : '') +
+        '<div class="off">' + esc(COUPON.benefit) + '</div>' +
+        '<div class="note msg">' + esc(COUPON.message) + '</div>' +
+        '<div class="serial"><span>고유 일련번호</span><b>' + esc(c.serial) + '</b></div>' +
+        '<div class="note">' + esc(maskPhone(c.phone)) + (c.issuedAt ? ' · 발급일 ' + esc(c.issuedAt) : '') + '</div>' +
+        (c.used ? '' : '<div class="note">결제 전 ' + esc(c.issueStore) + ' 직원에게 이 화면을 보여주세요.</div>') +
+      '</div>' +
+      (c.used ? '<div class="usedMark" aria-hidden="true">사용완료</div>' : '') +
+    '</div>';
+  }
+
+  function usedBoxHTML(c, justNow) {
+    var where = c.useStore ? '사용 매장: ' + esc(c.useStore) + (c.usedAt ? ' · ' + esc(c.usedAt) : '') : '';
+    if (justNow) {
+      return '<div class="doneBox" role="status"><b>사용완료입니다</b>오늘도 퐁당샤브를 방문해주셔서 감사합니다' +
+        (where ? '<small>' + where + '</small>' : '') + '</div>';
+    }
+    return '<div class="doneBox was" role="status"><b>사용완료된 쿠폰입니다</b>' +
+      (where ? '<small>' + where + '</small>' : '') + '</div>';
+  }
+
+  // 쿠폰 + (미사용이면) 직원 확인 → 매장 확인코드 → 사용완료
+  function renderCoupon(area, c, opts) {
+    opts = opts || {};
+    var html = (opts.notice ? '<p class="notice">' + esc(opts.notice) + '</p>' : '') + couponHTML(c) +
+      (opts.info ? '<p class="notice">' + esc(opts.info) + '</p>' : '');
+    if (c.used) {
+      html += usedBoxHTML(c, !!opts.justUsed);
+    } else {
+      html += '<button class="btn staff" type="button" data-act="staff">직원 확인 (직원이 눌러주세요)</button>' +
+        '<form class="codeBox hidden" data-el="codeForm" novalidate><p>매장 확인코드 4자리를 입력해 주세요</p>' +
+          '<input type="password" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="off" aria-label="매장 확인코드" data-el="code">' +
+          '<p class="err hidden" data-el="err" role="alert" style="margin:10px 0 0"></p>' +
+          '<button class="btn staff" type="submit" data-el="ok">사용 처리</button>' +
+          '<button class="btn ghost" type="button" data-act="cancel" style="margin-top:10px">취소</button>' +
+        '</form>';
+    }
+    area.innerHTML = html;
+    if (c.used) return;
+
+    var staffBtn = area.querySelector('[data-act="staff"]');
+    var form = area.querySelector('[data-el="codeForm"]');
+    var input = area.querySelector('[data-el="code"]');
+    var err = area.querySelector('[data-el="err"]');
+    var ok = area.querySelector('[data-el="ok"]');
+    input.addEventListener("input", function () { input.value = input.value.replace(/\D/g, "").slice(0, 4); });
+    staffBtn.addEventListener("click", function () {
+      staffBtn.classList.add("hidden");
+      form.classList.remove("hidden");
+      input.value = "";
+      input.focus();
+      form.scrollIntoView({ block: "center", behavior: "smooth" });
+    });
+    area.querySelector('[data-act="cancel"]').addEventListener("click", function () {
+      form.classList.add("hidden");
+      err.classList.add("hidden");
+      staffBtn.classList.remove("hidden");
+    });
+    form.addEventListener("submit", function (ev) {
+      ev.preventDefault();
+      err.classList.add("hidden");
+      if (!/^\d{4}$/.test(input.value)) return showErr(err, "확인코드 4자리를 입력해 주세요.");
+      ok.disabled = true; ok.textContent = "확인 중…";
+      call("use", { phone: c.phone, serial: c.serial, code: input.value }).then(function (res) {
+        renderCoupon(area, res, { justUsed: !res.alreadyUsed });
+        var box = area.querySelector(".doneBox");
+        if (box) box.scrollIntoView({ block: "center" });
+      }).catch(function (e) {
+        ok.disabled = false; ok.textContent = "사용 처리";
+        input.value = "";
+        showErr(err, errText(e));
+      });
+    });
+  }
+
+  // ---- 결과 ----
+  function renderResult() {
+    var pass = score >= PASS_SCORE;
+    var html = "";
+    if (pass) {
+      html += '<div class="stamp">참 잘했어요</div>' +
+        '<p class="resmsg">' + QUESTIONS.length + '문제 중 ' + score + '문제를 맞히셨어요!<br>이름부터 정겨운 순우리말 브랜드 퐁당의 할인쿠폰을 제공합니다.<br>쿠폰 발급을 위해 휴대폰 번호를 입력해주세요.</p>' +
+        '<form id="issueForm" novalidate>' +
+          '<div class="field"><label for="issuePhone">휴대폰 번호</label>' +
+          '<input type="tel" id="issuePhone" inputmode="numeric" autocomplete="tel" placeholder="010-0000-0000" maxlength="13"></div>' +
+          '<label class="agree"><input type="checkbox" id="issueAgree"><span>개인정보 수집·이용에 동의합니다 (필수)</span></label>' +
+          '<p class="privacy">' + esc(PRIVACY) + '</p>' +
+          '<p class="err hidden" id="issueErr" role="alert"></p>' +
+          '<button class="btn" id="issueSubmit" type="submit">쿠폰 발급받기</button>' +
+        '</form>' +
+        '<div id="issueArea"></div>' +
+        '<button class="btn ghost" id="againBtn" type="button">처음부터 다시 풀기</button>';
+    } else {
+      html += '<div class="stamp" style="font-size:52px">아쉬워요</div>' +
+        '<p class="resmsg">' + QUESTIONS.length + '문제 중 ' + score + '문제를 맞히셨어요.<br>' + PASS_SCORE + '문제 이상 맞히면 할인쿠폰을 드려요. 한 번 더 도전해 보세요!</p>' +
+        '<button class="btn" id="againBtn" type="button">다시 도전하기</button>';
+    }
+    $("resultCard").innerHTML = html;
+    $("againBtn").addEventListener("click", reset);
+    if (pass) {
+      bindPhoneInput($("issuePhone"));
+      $("issueForm").addEventListener("submit", issue);
+    }
+    show("result");
+  }
+
+  function showErr(el, msg) { el.textContent = msg; el.classList.remove("hidden"); }
+
+  function issue(ev) {
+    ev.preventDefault();
+    var phone = $("issuePhone").value, err = $("issueErr"), btn = $("issueSubmit");
+    err.classList.add("hidden");
+    if (!validPhone(phone)) return showErr(err, "휴대폰 번호를 정확히 입력해 주세요.");
+    if (!$("issueAgree").checked) return showErr(err, "개인정보 수집·이용에 동의해 주세요.");
+    btn.disabled = true; btn.textContent = "쿠폰 발급 중…";
+    call("issue", { phone: phone, store: STORE_ID }).then(function (c) {
+      $("issueForm").classList.add("hidden");
+      renderCoupon($("issueArea"), c, {
+        notice: c.existing ? "이 번호로 이미 " + c.issueStore + "에서 발급된 쿠폰이 있어요. 쿠폰은 한 번호당 1장만 발급돼요." : "",
+        info: "해당화면을 나가도 추후 쿠폰조회로 발급된 쿠폰확인이 가능합니다."
+      });
+      $("issueArea").scrollIntoView({ block: "start", behavior: "smooth" });
+    }).catch(function (e) {
+      showErr(err, errText(e));
+    }).then(function () {
+      btn.disabled = false; btn.textContent = "쿠폰 발급받기";
+    });
+  }
+
+  // ---- 나의 쿠폰 조회 ----
+  function openLookup() {
+    $("lookupForm").classList.remove("hidden");
+    $("lookupErr").classList.add("hidden");
+    $("lookupArea").innerHTML = "";
+    $("lookupPhone").value = "";
+    show("lookup");
+    $("lookupPhone").focus();
+  }
+
+  function lookup(ev) {
+    ev.preventDefault();
+    var phone = $("lookupPhone").value, err = $("lookupErr"), btn = $("lookupSubmit");
+    err.classList.add("hidden");
+    if (!validPhone(phone)) return showErr(err, "휴대폰 번호를 정확히 입력해 주세요.");
+    btn.disabled = true; btn.textContent = "조회 중…";
+    call("lookup", { phone: phone }).then(function (c) {
+      if (!c) {
+        $("lookupArea").innerHTML = '<p class="notice">이 번호로 발급된 쿠폰이 없어요. ' + (STORE_ID ? '퀴즈를 풀고 쿠폰을 받아 보세요!' : '매장에 비치된 QR코드를 찍어 퀴즈에 참여해 보세요!') + '</p>' +
+          (STORE_ID ? '<button class="btn" type="button" id="lookupToQuiz">퀴즈 시작하기</button>' : '');
+        if (STORE_ID) $("lookupToQuiz").addEventListener("click", reset);
+        return;
+      }
+      $("lookupForm").classList.add("hidden");
+      renderCoupon($("lookupArea"), c);
+    }).catch(function (e) {
+      showErr(err, errText(e));
+    }).then(function () {
+      btn.disabled = false; btn.textContent = "쿠폰 조회하기";
+    });
+  }
+
+  function reset() { idx = 0; score = 0; renderQuestion(); show("quiz"); }
+
+  if (STORE_ID) {
+    $("here").textContent = STORES[STORE_ID];
+    $("here").classList.remove("hidden");
+  } else {
+    $("startBtn").classList.add("hidden");
+    $("noStore").classList.remove("hidden");
+  }
+  $("startBtn").addEventListener("click", reset);
+  $("lookupBtn").addEventListener("click", openLookup);
+  $("lookupBack").addEventListener("click", function () { show("start"); });
+  $("lookupForm").addEventListener("submit", lookup);
+  bindPhoneInput($("lookupPhone"));
+  $("hintBtn").addEventListener("click", showHint);
+  $("nextBtn").addEventListener("click", function () {
+    if (idx < QUESTIONS.length - 1) { idx++; renderQuestion(); window.scrollTo(0, 0); }
+    else renderResult();
+  });
+</script>
+</body>
+</html>
